@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selamat Ulang Tahun! 🎉</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,800;1,600&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: #fdfbf7;
+        }
+        .font-serif-title { font-family: 'Playfair Display', serif; }
+        .font-handwriting { font-family: 'Caveat', cursive; }
+        
+        .cozy-card {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #f3ece1;
+            box-shadow: 0 10px 30px -5px rgba(184, 150, 120, 0.12);
+        }
+
+        .polaroid-tape::before {
+            content: '';
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 70px;
+            height: 22px;
+            background: rgba(243, 222, 203, 0.6);
+            backdrop-filter: blur(2px);
+            border: 1px solid rgba(210, 180, 150, 0.4);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+        }
+
+        @keyframes flameFlicker {
+            0%, 100% { transform: scale(1) rotate(-2deg); opacity: 1; }
+            50% { transform: scale(1.15) rotate(2deg); opacity: 0.85; }
+        }
+        .flame {
+            animation: flameFlicker 0.5s infinite alternate;
+            transform-origin: bottom center;
+        }
+
+        .bubble-btn {
+            background: linear-gradient(145deg, #ffffff, #ffe4e6);
+            box-shadow: 4px 4px 10px #e2d5c5, -4px -4px 10px #ffffff;
+            transition: all 0.15s ease-in-out;
+        }
+        .bubble-btn:active {
+            box-shadow: inset 2px 2px 5px #d1bfae, inset -2px -2px 5px #ffffff;
+            transform: scale(0.92);
+        }
+
+        @keyframes emoji-fall {
+            0% { transform: translateY(-50px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(105vh) rotate(360deg); opacity: 0.1; }
+        }
+        .emoji-rain {
+            position: fixed;
+            top: -50px;
+            z-index: 40;
+            pointer-events: none;
+            user-select: none;
+            animation: emoji-fall linear infinite;
+        }
+    </style>
+</head>
+<body class="text-stone-800 min-h-screen relative overflow-x-hidden selection:bg-rose-200 selection:text-rose-900">
+
+    <!-- Container untuk Hujan Emoji -->
+    <div id="emojiContainer"></div>
+
+    <!-- Audio Player -->
+    <audio id="bgAudio" loop></audio>
+    <button id="musicToggle" onclick="toggleAudio()" class="fixed top-4 right-4 z-50 w-11 h-11 rounded-full bg-white border border-stone-200 text-rose-500 flex items-center justify-center shadow-md hover:scale-110 transition hidden">
+        <i id="musicIcon" class="fa-solid fa-music"></i>
+    </button>
+
+    <!-- ================= 1. LAYAR TIUP LILIN & KEYPAD PIN ================= -->
+    <section id="unlockSection" class="fixed inset-0 z-50 bg-[#fdfbf7] flex items-center justify-center p-4">
+        <div class="max-w-md w-full text-center space-y-6">
+            
+            <!-- Kue & Lilin Interaktif -->
+            <div class="relative inline-block cursor-pointer group" onclick="blowOutCandle()" title="Klik untuk tiup lilin!">
+                <div class="w-28 h-28 rounded-full bg-rose-50 border border-rose-200 p-2 shadow-inner flex flex-col items-center justify-center mx-auto relative overflow-visible">
+                    <div id="flameElement" class="flame text-amber-500 text-2xl absolute -top-3 z-10 transition-all duration-300">
+                        🔥
+                    </div>
+                    <div id="smokeElement" class="hidden text-slate-400 text-xl absolute -top-4 z-10 animate-pulse">
+                        💨
+                    </div>
+                    <div class="text-5xl select-none group-hover:scale-110 transition duration-300">
+                        🎂
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-1">
+                <h1 class="text-2xl font-extrabold text-stone-800">Ada Kejutan Spesial! ✨</h1>
+                <p id="candleHint" class="text-xs text-rose-500 font-semibold animate-bounce">
+                    🕯️ Tap kue di atas buat tiup lilinnya!
+                </p>
+                <p id="unlockSubtext" class="text-xs text-stone-500 hidden">Masukkan PIN rahasia di bawah ini.</p>
+            </div>
+
+            <!-- Keypad Gelembung -->
+            <div id="pinContainer" class="space-y-4 hidden">
+                <div class="flex items-center justify-center gap-2">
+                    <input type="password" id="pinInput" readonly placeholder="• • • •" 
+                        class="bg-rose-50/80 border border-rose-200 rounded-full px-6 py-2.5 text-center text-xl font-bold tracking-[0.5em] text-rose-600 focus:outline-none max-w-[200px] shadow-inner">
+                </div>
+                <p id="pinError" class="text-xs text-rose-500 hidden font-semibold">PIN salah, coba lagi ya!</p>
+
+                <div class="grid grid-cols-3 gap-3 max-w-[220px] mx-auto pt-2">
+                    <button onclick="pressPin('1')" class="bubble-btn w-14 h-14 rounded-full text-rose-600 font-bold text-lg flex items-center justify-center mx-auto">1</button>
+                    <button onclick="pressPin('2')" class="bubble-btn w-14 h-14 rounded-full text-rose-600 font-bold text-lg flex items-center justify-center mx-auto">2</button>
+                    <button onclick="pressPin('3')" class="bubble-btn w-14 h-14 rounded-full text-rose-600 font-bold text-lg flex items-center justify-center mx-auto">3</button>
+                    <button onclick="pressPin('4')" class="bubble-btn w-14 h-14 rounded-full text-rose-600 font-bold text-lg flex items-center justify-center mx-auto">4</button>
+                    <button onclick="pressPin('5')" class="bubble-btn w-14 h-14 rounded-full text-rose-600 font-bold text-lg flex items-center justify-center mx-auto">5</button>
+                    <button onclick="pressPin('6')" class="bubble-btn w-14 h-14 rounded-full text-rose-600 font-bold text-lg flex items-center justify-center mx-auto">6</button>
+                    <button onclick="pressPin('7')" class="bubble-btn w-14 h-14 rounded-full text-rose-600 font-bold text-lg flex items-center justify-center mx-auto">7</button>
+                    <button onclick="pressPin('8')" class="bubble-btn w-14 h-14 rounded-full text-rose-600 font-bold text-lg flex items-center justify-center mx-auto">8</button>
+                    <button onclick="pressPin('9')" class="bubble-btn w-14 h-14 rounded-full text-rose-600 font-bold text-lg flex items-center justify-center mx-auto">9</button>
+                    <button onclick="clearPin()" class="bubble-btn w-14 h-14 rounded-full text-stone-400 font-bold text-xs flex items-center justify-center mx-auto">C</button>
+                    <button onclick="pressPin('0')" class="bubble-btn w-14 h-14 rounded-full text-rose-600 font-bold text-lg flex items-center justify-center mx-auto">0</button>
+                    <button onclick="deletePin()" class="bubble-btn w-14 h-14 rounded-full text-rose-400 font-bold text-sm flex items-center justify-center mx-auto">
+                        <i class="fa-solid fa-backspace"></i>
+                    </button>
+                </div>
+            </div>
+
+            <button id="unlockBtn" onclick="attemptUnlock()" class="w-full py-3.5 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-sm shadow-lg shadow-rose-200 transition transform active:scale-95 flex items-center justify-center gap-2 hidden">
+                <i class="fa-solid fa-envelope-open"></i> Buka Hadiah Ulang Tahun
+            </button>
+        </div>
+    </section>
+
+
+    <!-- ================= 2. HALAMAN UTAMA UCAPAN & KENANGAN ================= -->
+    <main id="mainContent" class="opacity-0 transition-opacity duration-1000 max-w-4xl mx-auto px-4 py-12 space-y-12">
+        
+        <!-- Foto Utama & Nama di Atas -->
+        <div class="text-center space-y-4 pt-4 flex flex-col items-center">
+            <div id="heroPhotoWrapper" class="relative group">
+                <div class="w-36 h-36 md:w-44 md:h-44 rounded-full p-1.5 bg-gradient-to-tr from-rose-300 via-amber-200 to-rose-400 shadow-xl shadow-rose-200/50">
+                    <img id="viewHeroPhoto" src="" alt="Foto Utama Si Ultah" 
+                        class="w-full h-full object-cover rounded-full border-4 border-white shadow-inner">
+                </div>
+                <span class="absolute bottom-1 right-2 bg-white text-rose-500 border border-rose-200 text-xs px-2.5 py-1 rounded-full font-bold shadow-md">
+                    👑 Birthday Star
+                </span>
+            </div>
+
+            <div class="space-y-2">
+                <span class="text-xs font-bold tracking-widest uppercase text-rose-600 bg-rose-100/80 border border-rose-200 px-4 py-1.5 rounded-full inline-block">
+                    Happy Birthday 🎉
+                </span>
+                <h1 id="viewRecipient" class="text-4xl md:text-6xl font-serif-title font-extrabold text-stone-800">
+                    Nama Penerima
+                </h1>
+                <p id="viewSender" class="text-sm md:text-base text-stone-500 font-medium">Dari: Pengirim</p>
+            </div>
+        </div>
+
+        <!-- Kartu Surat Ucapan -->
+        <div class="cozy-card p-8 md:p-12 rounded-3xl relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-rose-300 via-amber-200 to-teal-200"></div>
+            <div class="space-y-6">
+                <div class="flex items-center gap-2 text-rose-500 text-xs font-bold uppercase tracking-wider border-b border-stone-100 pb-4">
+                    <i class="fa-solid fa-heart"></i> Surat & Doa Tulus
+                </div>
+                <p id="viewLetter" class="text-2xl md:text-3xl font-handwriting leading-relaxed text-stone-700 whitespace-pre-line">
+                    Pesan ucapan ulang tahun bakal muncul di sini...
+                </p>
+            </div>
+        </div>
+
+        <!-- Galeri Foto Polaroid -->
+        <div id="gallerySection" class="space-y-8">
+            <div class="text-center space-y-1">
+                <h2 class="text-2xl font-bold text-stone-800 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-camera-retro text-rose-400"></i> Galeri Momen Kenangan
+                </h2>
+                <p class="text-xs text-stone-500">Kumpulan foto-foto manis kita bersama</p>
+            </div>
+
+            <div id="galleryGrid" class="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4"></div>
+        </div>
+
+        <!-- Tombol Balasan WhatsApp -->
+        <div class="cozy-card p-8 rounded-3xl text-center space-y-4 border border-stone-200">
+            <h3 class="text-xl font-bold text-stone-800">Kirim Balasan Terima Kasih ❤️</h3>
+            <p class="text-xs text-stone-500 max-w-md mx-auto">Suka sama kejutannya? Kirim pesan balasan langsung ke pengirimnya sekarang!</p>
+            
+            <button onclick="sendReplyWA()" class="px-8 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-md transition inline-flex items-center gap-2">
+                <i class="fa-brands fa-whatsapp text-lg"></i> Kirim Pesan via WhatsApp
+            </button>
+        </div>
+
+    </main>
+
+    <script>
+        let payloadData = null;
+        let isAudioPlaying = false;
+        let isCandleBlown = false;
+        let currentPin = "";
+
+        function blowOutCandle() {
+            if (isCandleBlown) return;
+
+            isCandleBlown = true;
+            document.getElementById('flameElement').classList.add('hidden');
+            document.getElementById('smokeElement').classList.remove('hidden');
+            
+            confetti({
+                particleCount: 50,
+                spread: 60,
+                origin: { y: 0.4 }
+            });
+
+            document.getElementById('candleHint').innerText = "YAY! Lilinnya mati! 🎉 Make a wish ya!";
+            document.getElementById('candleHint').classList.remove('animate-bounce', 'text-rose-500');
+            document.getElementById('candleHint').classList.add('text-emerald-600');
+
+            setTimeout(() => {
+                if (payloadData && payloadData.pin) {
+                    document.getElementById('pinContainer').classList.remove('hidden');
+                    document.getElementById('unlockSubtext').classList.remove('hidden');
+                }
+                document.getElementById('unlockBtn').classList.remove('hidden');
+            }, 600);
+        }
+
+        function pressPin(digit) {
+            if (currentPin.length < 8) {
+                currentPin += digit;
+                document.getElementById('pinInput').value = currentPin;
+                document.getElementById('pinError').classList.add('hidden');
+            }
+        }
+
+        function deletePin() {
+            currentPin = currentPin.slice(0, -1);
+            document.getElementById('pinInput').value = currentPin;
+        }
+
+        function clearPin() {
+            currentPin = "";
+            document.getElementById('pinInput').value = "";
+        }
+
+        function startEmojiRain() {
+            const emojis = ['🎂', '🎉', '✨', '🎈', '💖', '🥳', '🎁', '🌸', '🧸'];
+            const container = document.getElementById('emojiContainer');
+            
+            for (let i = 0; i < 25; i++) {
+                setTimeout(() => createSingleEmoji(container, emojis), i * 150);
+            }
+
+            setInterval(() => createSingleEmoji(container, emojis), 400);
+        }
+
+        function createSingleEmoji(container, emojis) {
+            const emojiSpan = document.createElement('span');
+            emojiSpan.className = 'emoji-rain';
+            emojiSpan.innerText = emojis[Math.floor(Math.random() * emojis.length)];
+            emojiSpan.style.left = Math.random() * 95 + 'vw';
+            
+            const duration = Math.random() * 3 + 4;
+            emojiSpan.style.animationDuration = duration + 's';
+            emojiSpan.style.fontSize = (Math.random() * 18 + 20) + 'px';
+            
+            container.appendChild(emojiSpan);
+            setTimeout(() => emojiSpan.remove(), duration * 1000);
+        }
+
+        function initData() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const cardId = urlParams.get('id');
+            const queryData = urlParams.get('data');
+            const hashStr = window.location.hash.startsWith('#data=') 
+                ? window.location.hash.slice(6) 
+                : '';
+
+            const rawData = hashStr || queryData;
+
+            if (rawData) {
+                try {
+                    const jsonStr = decodeURIComponent(atob(rawData));
+                    payloadData = JSON.parse(jsonStr);
+                } catch (e) {
+                    console.error("Gagal parsing data dari URL", e);
+                }
+            }
+
+            if (!payloadData && cardId) {
+                try {
+                    const savedJson = localStorage.getItem(cardId);
+                    if (savedJson) {
+                        payloadData = JSON.parse(savedJson);
+                    }
+                } catch (e) {
+                    console.error("Gagal membaca localStorage", e);
+                }
+            }
+
+            // Data contoh jika dibuka langsung tanpa link dari builder
+            if (!payloadData) {
+                payloadData = {
+                    recipient: "Budi Prasetyo 🎂",
+                    sender: "Sahabat Terbaikmu",
+                    heroPhoto: "https://images.unsplash.com/photo-1534528741775-53994a69daeb",
+                    letter: "Selamat ulang tahun ya bro! Gua cuma mau bilang makasih udah selalu ada di saat suka maupun duka. Tetap jadi orang baik, sehat selalu, dan semoga semua impian lu di tahun ini bisa terwujud satu per satu. Cheers for another great year!",
+                    bgm: "https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=romantic-piano-10871.mp3",
+                    pin: "1234",
+                    photos: [
+                        { url: "https://images.unsplash.com/photo-1513151233558-d860c5398176", caption: "Momen perayaan ulang tahun tahun lalu!" },
+                        { url: "https://images.unsplash.com/photo-1530103862676-de8c9debad1d", caption: "Tetap konyol dan selalu ceria ya ✨" }
+                    ]
+                };
+            }
+        }
+
+        function attemptUnlock() {
+            if (!isCandleBlown) {
+                alert("Tiup dulu lilinnya dengan cara klik ikon kue di atas! 🎂");
+                return;
+            }
+
+            if (payloadData.pin) {
+                if (currentPin !== payloadData.pin) {
+                    document.getElementById('pinError').classList.remove('hidden');
+                    return;
+                }
+            }
+
+            document.getElementById('unlockSection').classList.add('hidden');
+            const mainContent = document.getElementById('mainContent');
+            mainContent.classList.remove('opacity-0');
+
+            startEmojiRain();
+
+            if (payloadData.bgm) {
+                const audio = document.getElementById('bgAudio');
+                audio.src = payloadData.bgm;
+                audio.play().then(() => {
+                    isAudioPlaying = true;
+                    document.getElementById('musicToggle').classList.remove('hidden');
+                }).catch(err => console.log("Autoplay blocked:", err));
+            }
+
+            confetti({
+                particleCount: 120,
+                spread: 80,
+                origin: { y: 0.6 }
+            });
+
+            renderPage();
+        }
+
+        function renderPage() {
+            document.getElementById('viewRecipient').innerText = payloadData.recipient;
+            document.getElementById('viewSender').innerText = `Dari: ${payloadData.sender}`;
+            document.getElementById('viewLetter').innerText = payloadData.letter;
+
+            const heroImg = document.getElementById('viewHeroPhoto');
+            if (payloadData.heroPhoto) {
+                heroImg.src = payloadData.heroPhoto;
+            } else if (payloadData.photos && payloadData.photos.length > 0) {
+                heroImg.src = payloadData.photos[0].url;
+            } else {
+                document.getElementById('heroPhotoWrapper').classList.add('hidden');
+            }
+
+            const gallerySection = document.getElementById('gallerySection');
+            const galleryGrid = document.getElementById('galleryGrid');
+            galleryGrid.innerHTML = '';
+
+            if (payloadData.photos && payloadData.photos.length > 0) {
+                gallerySection.classList.remove('hidden');
+                payloadData.photos.forEach((photo, idx) => {
+                    const rotateClass = idx % 2 === 0 ? '-rotate-2' : 'rotate-2';
+                    const polaroid = document.createElement('div');
+                    polaroid.className = `polaroid-tape relative bg-white p-4 pb-6 rounded-sm border border-stone-200 shadow-md transform ${rotateClass} hover:rotate-0 hover:scale-105 transition duration-300`;
+                    polaroid.innerHTML = `
+                        <div class="h-64 md:h-72 w-full overflow-hidden bg-stone-100 rounded-sm mb-3">
+                            <img src="${photo.url}" alt="Memory" class="w-full h-full object-cover">
+                        </div>
+                        <p class="font-handwriting text-2xl text-center font-bold text-stone-700">${photo.caption}</p>
+                    `;
+                    galleryGrid.appendChild(polaroid);
+                });
+            } else {
+                gallerySection.classList.add('hidden');
+            }
+        }
+
+        function toggleAudio() {
+            const audio = document.getElementById('bgAudio');
+            const icon = document.getElementById('musicIcon');
+            if (isAudioPlaying) {
+                audio.pause();
+                icon.className = "fa-solid fa-volume-xmark";
+                isAudioPlaying = false;
+            } else {
+                audio.play();
+                icon.className = "fa-solid fa-music";
+                isAudioPlaying = true;
+            }
+        }
+
+        function sendReplyWA() {
+            const text = encodeURIComponent(`Halo ${payloadData.sender}, makasih banyak ya buat website ucapannya! Terharu banget deh! ❤️✨`);
+            window.open(`https://wa.me/?text=${text}`, '_blank');
+        }
+
+        window.onload = initData;
+    </script>
+</body>
+</html>
